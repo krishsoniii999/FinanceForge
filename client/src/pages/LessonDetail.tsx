@@ -19,7 +19,7 @@ export function LessonDetail() {
   const { lessonId } = useParams()
   const navigate = useNavigate()
   const lesson = lessons.find((l) => l.id === lessonId)
-  const { progress, markCompleted, markAccessed } = useLessonStore()
+  const { progress, markCompleted } = useLessonStore()
 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({})
   const [quizSubmitted, setQuizSubmitted] = useState<Record<number, boolean>>(

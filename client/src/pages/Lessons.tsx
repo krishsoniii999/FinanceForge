@@ -13,7 +13,6 @@ import {
   Clock,
   CheckCircle,
   ChevronRight,
-  BookOpen,
 } from 'lucide-react'
 
 const CATEGORIES = ['All', 'Basics', 'Valuation', 'Strategy', 'Technical'] as const

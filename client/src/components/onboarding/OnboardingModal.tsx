@@ -6,7 +6,6 @@ import { useTradeStore } from '../../stores/useTradeStore'
 import {
   Rocket,
   TrendingUp,
-  BookOpen,
   Sparkles,
   ArrowRight,
   ArrowLeft,

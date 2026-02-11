@@ -12,20 +12,12 @@ interface MetricCardProps {
   className?: string
 }
 
-const accentMap = {
-  blue: 'from-accent-blue/10 to-transparent',
-  green: 'from-gain/10 to-transparent',
-  red: 'from-loss/10 to-transparent',
-  purple: 'from-accent-purple/10 to-transparent',
-}
-
 export function MetricCard({
   label,
   value,
   change,
   changePercent,
   icon,
-  accentColor = 'blue',
   className,
 }: MetricCardProps) {
   const isPositive = changePercent !== undefined ? changePercent >= 0 : undefined

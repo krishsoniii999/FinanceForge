@@ -8,7 +8,7 @@ export const pageVariants = {
     filter: 'blur(0px)',
     transition: {
       duration: 0.5,
-      ease: [0.22, 1, 0.36, 1],
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
       staggerChildren: 0.06,
     },
   },
@@ -103,7 +103,7 @@ export const heroVariants = {
     y: 0,
     scale: 1,
     transition: {
-      type: 'spring',
+      type: 'spring' as const,
       stiffness: 200,
       damping: 20,
       mass: 1,

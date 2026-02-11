@@ -3,7 +3,7 @@ import 'dotenv/config'
 export const config = {
   port: Number(process.env.PORT) || 3001,
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || '*',
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY || '',

@@ -1,49 +1,50 @@
 import { Router } from 'express'
-import * as fs from 'fs'
-import * as path from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import { supabase } from '../services/supabase'
 
 const router = Router()
-const DATA_DIR = path.join(__dirname, '..', 'data')
-const PROGRESS_FILE = path.join(DATA_DIR, 'lesson-progress.json')
+const USER_ID = 'default'
 
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
+router.get('/progress', async (_req, res, next) => {
+  try {
+    const { data } = await supabase.from('lesson_progress').select('*').eq('user_id', USER_ID)
+
+    const progress: Record<string, { completed: boolean; lastAccessed: string }> = {}
+    for (const row of data || []) {
+      progress[row.lesson_id] = {
+        completed: row.completed,
+        lastAccessed: row.completed_at || new Date().toISOString(),
+      }
+    }
+    res.json(progress)
+  } catch (err) {
+    next(err)
   }
-}
-
-function loadProgress(): Record<string, { completed: boolean; lastAccessed: string }> {
-  ensureDataDir()
-  if (!fs.existsSync(PROGRESS_FILE)) {
-    fs.writeFileSync(PROGRESS_FILE, JSON.stringify({}, null, 2))
-    return {}
-  }
-  return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'))
-}
-
-function saveProgress(data: Record<string, { completed: boolean; lastAccessed: string }>) {
-  ensureDataDir()
-  fs.writeFileSync(PROGRESS_FILE, JSON.stringify(data, null, 2))
-}
-
-router.get('/progress', (_req, res) => {
-  res.json(loadProgress())
 })
 
-router.post('/progress/:lessonId', (req, res) => {
-  const { lessonId } = req.params
-  const { completed } = req.body
-  const progress = loadProgress()
-  progress[lessonId] = {
-    completed: completed ?? true,
-    lastAccessed: new Date().toISOString(),
+router.post('/progress/:lessonId', async (req, res, next) => {
+  try {
+    const { lessonId } = req.params
+    const { completed } = req.body
+    const now = new Date().toISOString()
+
+    await supabase.from('lesson_progress').upsert(
+      { user_id: USER_ID, lesson_id: lessonId, completed: completed ?? true, completed_at: now },
+      { onConflict: 'user_id,lesson_id' }
+    )
+
+    const { data } = await supabase.from('lesson_progress').select('*').eq('user_id', USER_ID)
+
+    const progress: Record<string, { completed: boolean; lastAccessed: string }> = {}
+    for (const row of data || []) {
+      progress[row.lesson_id] = {
+        completed: row.completed,
+        lastAccessed: row.completed_at || now,
+      }
+    }
+    res.json(progress)
+  } catch (err) {
+    next(err)
   }
-  saveProgress(progress)
-  res.json(progress)
 })
 
 export default router

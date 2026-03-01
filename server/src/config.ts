@@ -10,6 +10,10 @@ export const config = {
     model: 'claude-sonnet-4-5-20250929',
     maxTokens: 1024,
   },
+  supabase: {
+    url: process.env.SUPABASE_URL || '',
+    key: process.env.SUPABASE_SERVICE_KEY || '',
+  },
   finnhub: {
     apiKey: process.env.FINNHUB_API_KEY || '',
     baseUrl: 'https://finnhub.io/api/v1',

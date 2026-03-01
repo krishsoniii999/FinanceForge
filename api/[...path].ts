@@ -270,6 +270,57 @@ app.post('/api/ai/chat', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
+// ── AI: Trade Coach ──────────────────────────────────────
+app.post('/api/ai/trade-coach', async (req, res, next) => {
+  try {
+    const { symbol, action, shares, price, totalCost, cashBalance: cash } = req.body
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 500,
+      system: `You are a financial education coach for FinanceForge, a paper trading platform for complete beginners. Analyze trades and teach in simple, plain English. No jargon. Be honest about risks but encouraging.
+Return ONLY valid JSON, no markdown, no explanation outside the JSON:
+{"whatTheyDo":"1 sentence about what this company does","whatItMeans":"1-2 sentences what this trade means for a beginner","thingsToKnow":["point 1","point 2","point 3"],"riskLevel":"Low"|"Medium"|"High","riskReason":"one sentence why"}`,
+      messages: [{ role: 'user', content: `User is about to ${action} ${shares} share${shares > 1 ? 's' : ''} of ${symbol} at $${Number(price).toFixed(2)}/share. Total: $${Number(totalCost).toFixed(2)}. Available cash: $${Number(cash).toFixed(2)}.` }],
+    })
+    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
+    res.json(JSON.parse(text))
+  } catch (err) { next(err) }
+})
+
+// ── AI: Explain Term ─────────────────────────────────────
+app.post('/api/ai/explain', async (req, res, next) => {
+  try {
+    const { term, context } = req.body
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 150,
+      system: 'You explain financial terms to complete beginners in 2-3 plain English sentences. Use a simple analogy if helpful. No jargon.',
+      messages: [{ role: 'user', content: `Explain "${term}"${context ? ` in the context of ${context}` : ''} simply.` }],
+    })
+    res.json({ explanation: response.content[0].type === 'text' ? response.content[0].text : '' })
+  } catch (err) { next(err) }
+})
+
+// ── AI: Portfolio Doctor ──────────────────────────────────
+app.post('/api/ai/portfolio-doctor', async (req, res, next) => {
+  try {
+    const { holdings, cashBalance: cash, totalValue, totalPnL, totalPnLPercent } = req.body
+    const holdingsSummary = holdings.length === 0
+      ? 'No holdings yet — all cash'
+      : holdings.map((h: any) => `${h.symbol} (${h.shares} shares)`).join(', ')
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5-20250929',
+      max_tokens: 600,
+      system: `You are a financial education coach reviewing a beginner's paper trading portfolio. Be encouraging and educational. Point out what they're doing well and what to learn next.
+Return ONLY valid JSON, no markdown:
+{"grade":"A"|"B"|"C"|"D","summary":"2-3 sentences about the portfolio overall","strengths":["strength 1","strength 2"],"improvements":["thing to learn 1","thing to learn 2"],"tip":"one specific actionable tip"}`,
+      messages: [{ role: 'user', content: `Portfolio: Cash $${Number(cash).toFixed(2)}, Total Value $${Number(totalValue).toFixed(2)}, P&L $${Number(totalPnL).toFixed(2)} (${Number(totalPnLPercent).toFixed(1)}%). Holdings: ${holdingsSummary}.` }],
+    })
+    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '{}'
+    res.json(JSON.parse(text))
+  } catch (err) { next(err) }
+})
+
 // ── Error handler ─────────────────────────────────────────
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error(err)

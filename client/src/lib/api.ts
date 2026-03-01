@@ -113,3 +113,22 @@ export async function getAiHealth() {
   const { data } = await api.get(`/ai/health`)
   return data
 }
+
+export async function getTradeCoach(payload: {
+  symbol: string; action: string; shares: number; price: number; totalCost: number; cashBalance: number
+}) {
+  const { data } = await api.post(`/ai/trade-coach`, payload)
+  return data as { whatTheyDo: string; whatItMeans: string; thingsToKnow: string[]; riskLevel: 'Low' | 'Medium' | 'High'; riskReason: string }
+}
+
+export async function explainTerm(term: string, context?: string) {
+  const { data } = await api.post(`/ai/explain`, { term, context })
+  return data as { explanation: string }
+}
+
+export async function getPortfolioDoctor(payload: {
+  holdings: any[]; cashBalance: number; totalValue: number; totalPnL: number; totalPnLPercent: number
+}) {
+  const { data } = await api.post(`/ai/portfolio-doctor`, payload)
+  return data as { grade: string; summary: string; strengths: string[]; improvements: string[]; tip: string }
+}

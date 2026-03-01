@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { PageTransition } from '../components/layout/PageTransition'
 import { GlassCard } from '../components/ui/GlassCard'
 import { MetricCard } from '../components/ui/MetricCard'
@@ -11,6 +11,7 @@ import { useTradeStore } from '../stores/useTradeStore'
 import { useStockQuotes } from '../hooks/useStockQuote'
 import { formatCurrency, formatPercent } from '../lib/formatters'
 import { cardVariants, staggerContainer } from '../styles/animations'
+import { getPortfolioDoctor } from '../lib/api'
 import {
   Briefcase,
   DollarSign,
@@ -18,12 +19,24 @@ import {
   TrendingDown,
   ArrowLeftRight,
   RotateCcw,
+  Stethoscope,
+  Loader2,
+  Star,
+  ArrowUp,
+  Lightbulb,
 } from 'lucide-react'
+
+type DoctorData = { grade: string; summary: string; strengths: string[]; improvements: string[]; tip: string }
+
+const gradeColor: Record<string, string> = { A: 'text-gain', B: 'text-accent-blue', C: 'text-yellow-400', D: 'text-loss' }
+const gradeBg: Record<string, string> = { A: 'bg-gain/10 border-gain/20', B: 'bg-accent-blue/10 border-accent-blue/20', C: 'bg-yellow-400/10 border-yellow-400/20', D: 'bg-loss/10 border-loss/20' }
 
 export function Portfolio() {
   const navigate = useNavigate()
   const { cashBalance, holdings, reset } = usePortfolioStore()
   const openTrade = useTradeStore((s) => s.open)
+  const [doctorData, setDoctorData] = useState<DoctorData | null>(null)
+  const [doctorLoading, setDoctorLoading] = useState(false)
 
   const holdingSymbols = holdings.map((h) => h.symbol)
   const { data: quotes } = useStockQuotes(holdingSymbols)
@@ -88,6 +101,25 @@ export function Portfolio() {
 
   if (cashBalance > 0) {
     allocationData.push({ name: 'Cash', value: cashBalance, color: '#64748b' })
+  }
+
+  const handleDoctorAnalysis = async () => {
+    if (doctorLoading) return
+    setDoctorLoading(true)
+    try {
+      const result = await getPortfolioDoctor({
+        holdings: portfolioMetrics.holdingsWithPnL,
+        cashBalance,
+        totalValue: portfolioMetrics.totalValue,
+        totalPnL: portfolioMetrics.totalPnL,
+        totalPnLPercent: portfolioMetrics.totalPnLPercent,
+      })
+      setDoctorData(result)
+    } catch {
+      // silently fail
+    } finally {
+      setDoctorLoading(false)
+    }
   }
 
   return (
@@ -335,6 +367,108 @@ export function Portfolio() {
             </GlassCard>
           </motion.div>
         </div>
+
+        {/* Portfolio Doctor */}
+        <motion.div variants={cardVariants} initial="initial" animate="animate" custom={6}>
+          <GlassCard>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Stethoscope size={16} className="text-accent-blue" />
+                <h2 className="text-sm font-semibold">Portfolio Doctor</h2>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleDoctorAnalysis}
+                disabled={doctorLoading || holdings.length === 0}
+              >
+                {doctorLoading ? (
+                  <><Loader2 size={13} className="animate-spin" /> Analyzing...</>
+                ) : (
+                  <><Stethoscope size={13} /> {doctorData ? 'Re-analyze' : 'Analyze My Portfolio'}</>
+                )}
+              </Button>
+            </div>
+
+            {!doctorData && !doctorLoading && (
+              <p className="text-xs text-text-tertiary text-center py-4">
+                {holdings.length === 0
+                  ? 'Add holdings before running an analysis.'
+                  : 'Get an AI-powered health check of your portfolio — strengths, risks, and a learning tip.'}
+              </p>
+            )}
+
+            {doctorLoading && (
+              <div className="flex items-center justify-center gap-2 py-8 text-text-secondary text-sm">
+                <Loader2 size={16} className="animate-spin text-accent-blue" />
+                Analyzing your portfolio...
+              </div>
+            )}
+
+            <AnimatePresence>
+              {doctorData && !doctorLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4"
+                >
+                  {/* Grade + summary */}
+                  <div className={`flex items-start gap-3 p-3 rounded-xl border ${gradeBg[doctorData.grade] ?? 'bg-white/5 border-white/10'}`}>
+                    <div className={`text-3xl font-black ${gradeColor[doctorData.grade] ?? 'text-text-primary'}`}>
+                      {doctorData.grade}
+                    </div>
+                    <p className="text-xs text-text-secondary leading-relaxed pt-1">{doctorData.summary}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Strengths */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Star size={12} className="text-gain" />
+                        <span className="text-xs font-semibold text-gain uppercase tracking-wider">Strengths</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {doctorData.strengths.map((s, i) => (
+                          <li key={i} className="text-xs text-text-secondary flex items-start gap-1.5">
+                            <span className="text-gain mt-0.5 shrink-0">✓</span>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Improvements */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <ArrowUp size={12} className="text-yellow-400" />
+                        <span className="text-xs font-semibold text-yellow-400 uppercase tracking-wider">Improve</span>
+                      </div>
+                      <ul className="space-y-1">
+                        {doctorData.improvements.map((s, i) => (
+                          <li key={i} className="text-xs text-text-secondary flex items-start gap-1.5">
+                            <span className="text-yellow-400 mt-0.5 shrink-0">→</span>
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Learning tip */}
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-accent-blue/5 border border-accent-blue/15">
+                    <Lightbulb size={13} className="text-accent-blue shrink-0 mt-0.5" />
+                    <p className="text-xs text-text-secondary leading-relaxed">
+                      <span className="text-accent-blue font-semibold">Tip: </span>
+                      {doctorData.tip}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </GlassCard>
+        </motion.div>
       </div>
     </PageTransition>
   )
